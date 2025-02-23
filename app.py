@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify
+import PyPDF2
+import io
 from flask_cors import CORS, cross_origin
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -92,6 +96,29 @@ def check_answer_endpoint():
     )
     print(response.choices[0].message.content)
     return jsonify({"response": response.choices[0].message.content})
+
+@app.route('/parse-pdf', methods=['POST'])
+def parse_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    try:
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file.read()))
+        text = ''
+
+        for page in pdf_reader.pages:
+            text += page.extract_text() or ''
+        
+        
+        return jsonify({'text': text})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run()
